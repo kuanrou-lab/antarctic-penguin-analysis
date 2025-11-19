@@ -15,5 +15,5 @@ The analysis was originally completed as part of a coursework assignment during 
 * **Penguins on the three islands do show differences in physical traits, but these differences are largely driven by species composition rather than environmental factors.**  
   When controlling for species (e.g., analysing Adelie alone), the island-level differences disappear—indicating that “island effects” are actually “species effects.”
 
---
+---
 Kuanrou Fan
