@@ -1,0 +1,254 @@
+---
+title: "Data Analysis of 200 Penguins from Antarctica"
+author: "Kuanrou Fan"
+date: "Semester 1, 2024/2025"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+In this report, data from three species of penguins—Adelie, Chinstrap, and Gentoo—from Biscoe, Dream, and Torgersen islands in Antarctica were analyzed. The entire dataset contains 200 rows and 8 columns. Each row provides information on a penguin from Antarctica, including its species, island, bill length, bill depth, flipper length, body mass, sex, and the year the data was recorded.
+
+# 1 Exploratory Data Analysis of Penguin Sample
+
+## 1.1 Overview of the Penguin Data
+
+First, gain an overall understanding of the entire dataset.
+```{r, echo=FALSE, warning=FALSE}
+library(palmerpenguins)
+data("penguins")
+penguins <- na.omit(penguins)
+n <- 200
+set.seed(42)
+my.penguins <- penguins[sample(nrow(penguins), n), ]
+summary(my.penguins)
+```
+Based on the above statistical data, among the 200 penguins, the species with the highest number is Adelie, totaling 86, while the Chinstrap penguins are the least, with only 42. These penguins are distributed across three islands, with the highest number of 97 penguins on Biscoe Island, and the fewest, only 28, on Torgersen Island. The penguin bill length ranges from 32.10 mm to 58.00 mm, with an average of 44.09 mm. The bill depth ranges from 13.40 mm to 21.50 mm, with an average of 17.20 mm. The flipper length ranges from 172 mm to 231 mm, with an average of 201 mm. The penguins' body mass ranges from 2700 g to 5950 g, with an average of 4189 g. The gender distribution is relatively balanced, with 96 females and 104 males.
+
+## 1.2 Distribution of the Three Penguin Species
+
+Here is a statistical plot created using R to show the distribution of three different penguin species across three islands:
+```{r, fig.asp = 0.6, out.width = "75%", fig.align = "center", echo=FALSE, warning=FALSE}
+library(ggplot2)
+library(RColorBrewer)
+ggplot(my.penguins, aes(x = island, fill = species)) +
+  geom_bar(position = "stack") +
+  labs(x = "Island",
+       y = "Count of Penguins") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat = "count", aes(label = after_stat(count)), 
+            position = position_stack(vjust = 0.5), 
+            color = "white")
+```
+According to this chart, we can visually observe that Gentoo penguins are only found on Biscoe Island, Chinstrap penguins are only found on Dream Island, while Adelie penguins are distributed across all three islands. Regarding the possible reasons for the distribution of Adelie penguins across these three islands, I propose two hypotheses: 1.Compared to other penguin species, Adelie penguins may have stronger swimming abilities; 2.External geographical factors, such as geological or climatic changes, have led to Adelie penguins inhabiting these three different islands.
+
+To confirm the first hypothesis, the average flipper lengths of the three penguin species should be considered, as species with longer flippers may have stronger swimming abilities. Additionally, the ratio of flipper length to body mass should also be examined, as there are weight differences among the three species, and body mass is positively correlated with flipper length (which will be discussed further below). Therefore, in this context, the ratio of flipper length to body mass may be more persuasive.
+```{r, echo=FALSE, warning=FALSE}
+library(dplyr)
+penguin_summary <- my.penguins %>%
+  mutate(flipper_weight_ratio = flipper_length_mm / body_mass_g) %>%
+  group_by(species) %>%
+  summarise(
+    average_body_mass = format(mean(body_mass_g), nsmall = 2, digits = 2),
+    average_flipper_length = format(mean(flipper_length_mm), nsmall = 2, digits = 2),
+    flipper_length_to_body_mass_ratio = format(mean(flipper_weight_ratio), nsmall = 4, digits = 3)
+  )
+print(penguin_summary)
+```
+From the data above, we can see that the average flipper length and the average ratio of flipper length to body mass of Adelie penguins are not higher than those of the other two species. Therefore, up to this point, we cannot conclude that the distribution of Adelie penguins across these three islands is due to their stronger swimming abilities. As for the second hypothesis, more geological or meteorological evidence is needed.
+
+## 1.3 Correlations Among Key Morphometric Traits of Penguins
+
+To investigate the relationships among the four variables: bill length, bill depth, flipper length, and body mass, the following scatterplot matrix was generated based on three different species.
+```{r, fig.asp = 0.6, out.width = "90%", fig.align = "center", echo=FALSE, warning=FALSE}
+library(ggplot2)
+suppressPackageStartupMessages(library(GGally))
+ggpairs(my.penguins, 
+        aes(color = species, alpha = 0.6), 
+        columns = c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g"),
+        lower = list(continuous = wrap("points", size = 0.6))) +
+  theme_minimal() + 
+  theme(
+    strip.text = element_text(size = 7),
+    axis.text = element_text(size = 7)
+  )
+```
+From the graph, it can be seen that for these three species of penguins, the four variables are all positively correlated with each other. However, the strength of these positive correlations varies among the different species. The bill depth of Adelie penguins is moderately positively correlated with body mass, the flipper length of Chinstrap penguins is strongly positively correlated with body mass, the bill length and bill depth of Gentoo penguins are strongly positively correlated, and the flipper length and body mass of Gentoo penguins are also strongly positively correlated.
+
+The variable distribution plot on the diagonal also shows that the bill length of Adelie penguins is shorter than that of the other two penguin species, the bill depth of Gentoo penguins is shorter than that of the other two species, while their flipper length is longer than that of the other two species, and their body mass is larger than that of the other two penguins. Combined with the scatter plot, it can be concluded that there are significant species differences in the physical characteristics of these three penguin species. Finally, when considering all three penguin species as a whole, there is a strong positive correlation between flipper length and body mass for all penguins, with a correlation coefficient of 0.875.
+
+# 2 Fitting a Normal Distribution to the Bill Length Data of Adelie Penguins
+
+Based on the scatterplot matrix in Section 1.3, we can observe that the bill length data for Adelie penguins appears to follow a normal distribution. Next, we will fit a normal distribution to this dataset.
+
+## 2.1 Calculate the maximum likelihood estimate of the parameters
+
+The parameters calculated using R for the maximum likelihood estimate are as follows:
+```{r, echo=FALSE}
+adelie_data <- subset(my.penguins, species == "Adelie")
+bill_length_adelie <- adelie_data$bill_length_mm
+mu <- mean(bill_length_adelie)
+sigma <- sd(bill_length_adelie)
+cat("Mean bill length for Adelie penguins:", mu, "\n")
+cat("Standard deviation of bill length for Adelie penguins:", sigma, "\n")
+```
+## 2.2 Plot the histogram and overlay the normal distribution curve
+
+Generate a histogram of the bill length data for Adelie penguins using R, and overlay a normal distribution curve on the histogram based on the data from Section 2.1.
+```{r, fig.asp = 0.6, out.width = "75%", fig.align = "center", echo=FALSE}
+hist(bill_length_adelie, probability = TRUE,
+     main = "Adelie Penguins' Bill Length Distribution",
+     xlab = "Adelie Penguins' Bill Lengths (mm)", 
+     col = "lightblue", 
+     border = "black",
+     xlim = c(32, 46), 
+     ylim = c(0, 0.25),
+     breaks = 20)
+curve(dnorm(x, mean = mu, sd = sigma), 
+      col = "red", lwd = 2, add = TRUE)
+legend("topright", legend = c("Fitted Normal Distribution"), 
+       col = "red", lwd = 2, cex = 0.8)
+```
+Visually, the fitted normal distribution curve aligns well with the actual data. To further assess the accuracy of this distribution, we conduct a Shapiro-Wilk test on the bill length data of Adelie penguins and generate a Q-Q plot related to this normal distribution.
+
+## 2.3 Accuracy test of the distribution
+
+The p-value from the Shapiro-Wilk test and the generated Q-Q plot are displayed below using R:
+```{r, fig.asp = 0.6, out.width = "75%", fig.align = "center", echo=FALSE, warning=FALSE}
+shapiro_test_result <- shapiro.test(bill_length_adelie)
+cat("Shapiro-Wilk test W value:", format(shapiro_test_result$statistic, digits = 3, nsmall = 3), "\n")
+cat("Shapiro-Wilk test p-value:", format(shapiro_test_result$p.value, digits = 3, nsmall = 3), "\n")
+standardized_data <- (bill_length_adelie - mu) / sigma
+qqnorm(standardized_data)
+qqline(standardized_data, col = "red")
+```
+In this Q-Q plot, the data points in the upper right corner are slightly below the red reference line, indicating that the actual data in the right tail of the distribution is slightly less than what is expected for a normal distribution. Similarly, there are some data points above the reference line in the lower left corner, suggesting a slight deviation in the lower values as well. Nevertheless, in the Shapiro-Wilk test, the p-value is 0.827, which indicates that the data does not significantly deviate from normality. Although there are minor deviations in the tails of the Q-Q plot, statistically, these deviations are not sufficient to conclude that the data is not normally distributed. In summary, we can conclude that the bill length of Adelie penguins follows a normal distribution.
+
+## 2.4 Calculating Probability from the Normal Distribution of Adelie Penguins' Bill Length
+
+The bill length data of Adelie penguins follows a normal distribution, which allows us to calculate the probability that the bill length of any given Adelie penguin is less than or equal to a specific value using the normal distribution model for Adelie penguin bill length. In section 2.1, it was determined that the mean and standard deviation of the Adelie penguin bill length are 38.65581 mm and 2.662136 mm, respectively. Using these two values, print out two example probabilities in R as follows:
+```{r, echo=FALSE}
+probability_40 <- pnorm(40, mean = mu, sd = sigma)
+cat("The probability that the bill length is less than or equal to 40 mm is:", round(probability_40, 3), "\n")
+probability_36 <- pnorm(36, mean = mu, sd = sigma)
+cat("The probability that the bill length is less than or equal to 36 mm is:", round(probability_36, 3), "\n")
+```
+
+# 3 Estimating Penguin Sex Using Measurement Data
+
+In order to estimate the sex of penguins from measurement data and avoid direct harm to the animals, we need to determine whether there are significant differences in body measurements between male and female penguins. To achieve this, we can perform T-tests on all of the penguins' measurement data.
+
+## 3.1 Performing T-Test on the Penguin Dataset
+
+As noted in Section 1.3, there are differences in physical characteristics among the three penguin species. To avoid any interaction effects between the data, we should perform T-tests separately for each species to compare sexes, examining whether bill length, bill depth, flipper length, and body mass show significant statistical differences between males and females. The following are the results of the relevant T-tests performed on the penguin dataset using R:
+```{r, echo=FALSE}
+library(dplyr)
+species_list <- unique(my.penguins$species)
+variables <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g")
+results <- data.frame(
+  Species = character(),
+  Variable = character(),
+  t_value = numeric(),
+  p_value = numeric(),
+  conf_low = numeric(),
+  conf_high = numeric(),
+  stringsAsFactors = FALSE
+)
+for (species_name in c("Adelie", "Chinstrap", "Gentoo")) {
+  for (var in variables) {
+    species_data <- my.penguins %>% filter(species == species_name)
+    t_test_result <- t.test(species_data[[var]] ~ species_data$sex)
+    results <- rbind(results, data.frame(
+      Species = species_name,
+      Variable = var,
+      t_value = round(t_test_result$statistic, 4),
+      p_value = format(t_test_result$p.value, scientific = TRUE, digits = 5),
+      conf_low = round(t_test_result$conf.int[1], 4),
+      conf_high = round(t_test_result$conf.int[2], 4),
+      stringsAsFactors = FALSE
+    ))
+  }
+}
+results <- results %>% 
+  mutate(Species = factor(Species, levels = c("Adelie", "Chinstrap", "Gentoo")),
+         Variable = factor(Variable, levels = c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g"))) %>% 
+  arrange(Species, Variable)
+options(scipen = 999)
+print(results)
+```
+Based on the above results, for Adelie penguins, body mass and bill depth are the most effective variables for distinguishing their sex, showing very high reliability. Bill length also has a good distinguishing effect, but the ability of flipper length to differentiate between sexes is relatively weaker. For Chinstrap penguins, bill depth and bill length are the most effective variables for distinguishing their sex, showing the highest reliability. Flipper length also shows some differences between sexes, while body mass exhibits relatively smaller differences. For Gentoo penguins, body mass is the most significant variable for distinguishing sex, followed by bill depth. Both variables demonstrate high reliability. In contrast, flipper length and bill length show relatively weaker differences between male and female Gentoo penguins. 
+
+Overall, the differences in body mass between male and female Adelie and Gentoo penguins are significant, while the differences in bill depth between sexes are notable across all species. Therefore, body mass and bill depth can serve as reliable indicators for distinguishing between male and female penguins, allowing for effective sex estimation while minimizing disturbance and harm to the animals.
+
+## 3.2 Visualizing Key Variables for Penguin Sex Differentiation
+
+Based on the T-test results, the variable that best distinguishes the sex of Adelie penguins is body mass, the best variable for distinguishing Chinstrap penguins is bill depth, and for Gentoo penguins, body mass is the most effective variable for sex differentiation. The body mass of Adelie penguins, the bill depth of Chinstrap penguins, and the body mass of Gentoo penguins will be visualized by sex to provide further reference for distinguishing the sex of penguins across different species.
+
+```{r, fig.asp = 0.8, out.width = "70%", fig.align = "center", echo=FALSE}
+library(ggplot2)
+grid.arrange <- gridExtra::grid.arrange
+adelie_plot <- ggplot(subset(my.penguins, species == "Adelie"), aes(x = sex, y = body_mass_g, fill = sex)) +
+  geom_boxplot() +
+  stat_summary(fun = mean, geom = "crossbar", width = 1.0, linetype = "dashed", color = "red", linewidth = 0.2) +
+  labs(title = "Adelie Penguins Body Mass by Sex", y = "Body Mass (g)", x = "Sex") + 
+  theme(legend.position = "none") +
+  scale_fill_brewer(palette = "Pastel1")
+chinstrap_plot <- ggplot(subset(my.penguins, species == "Chinstrap"), aes(x = sex, y = bill_depth_mm, fill = sex)) +
+  geom_boxplot() +
+  stat_summary(fun = mean, geom = "crossbar", width = 1.0, linetype = "dashed", color = "red", linewidth = 0.2) +
+  labs(title = "Chinstrap Penguins Bill Depth by Sex", y = "Bill Depth (mm)", x = "Sex") +
+  theme(legend.position = "none") +
+  scale_fill_brewer(palette = "Pastel1")
+gentoo_plot <- ggplot(subset(my.penguins, species == "Gentoo"), aes(x = sex, y = body_mass_g, fill = sex)) +
+  geom_boxplot() +
+  stat_summary(fun = mean, geom = "crossbar", width = 1.0, linetype = "dashed", color = "red", linewidth = 0.2) +
+  labs(title = "Gentoo Penguins Body Mass by Sex", y = "Body Mass (g)", x = "Sex") +
+  theme(legend.position = "none") +
+  scale_fill_brewer(palette = "Pastel1")
+grid.arrange(adelie_plot, chinstrap_plot, gentoo_plot, nrow = 3)
+```
+
+# 4 Does Island Habitat Affect Penguin Physical Characteristics
+
+To determine whether there are significant differences in the physical characteristics of penguins living on different islands, an ANOVA can be performed on penguins from different islands. First, perform an ANOVA on all penguins from the three islands, and then conduct an ANOVA specifically on the Adelie species across the three islands.
+
+## 4.1 ANOVA on Penguins from Three Islands
+
+Using R language, perform an ANOVA on the four variables: bill length, bill depth, flipper length, and body mass for penguins from three different islands: Biscoe, Dream, and Torgersen. The results are as follows:
+```{r, echo=FALSE}
+bill_length_aov <- aov(bill_length_mm ~ island, data = my.penguins)
+cat("\n--- Bill Length ANOVA ---\n")
+summary(bill_length_aov)
+bill_depth_aov <- aov(bill_depth_mm ~ island, data = my.penguins)
+cat("\n--- Bill Depth ANOVA ---\n")
+summary(bill_depth_aov)
+flipper_length_aov <- aov(flipper_length_mm ~ island, data = my.penguins)
+cat("\n--- Flipper Length ANOVA ---\n")
+summary(flipper_length_aov)
+body_mass_aov <- aov(body_mass_g ~ island, data = my.penguins)
+cat("\n--- Body Mass ANOVA ---\n")
+summary(body_mass_aov)
+```
+From the ANOVA results, the p-values for all four variables are very small, which seems to indicate that the different islands have a significant effect on the body characteristics of the penguins. So, can we conclude that the island where the penguins live affects their body traits? Next, an ANOVA will be conducted on the Adelie penguins from the three islands.
+
+## 4.2 ANOVA on Adelie Penguins from Three Islands
+
+From section 1.2, we know that Gentoo penguins are only found on Biscoe Island, Chinstrap penguins are only found on Dream Island, while Adelie penguins are distributed across all three islands. To determine whether the Adelie penguins from different islands differ in their body characteristics, an ANOVA is conducted on four body-related variables for Adelie penguins from the three islands. The results are as follows:
+```{r, echo=FALSE}
+library(dplyr)
+adelie_penguins <- my.penguins %>%
+  filter(species == "Adelie")
+bill_length_aov_adelie <- aov(bill_length_mm ~ island, data = adelie_penguins)
+cat("\n--- Adelie Penguins Bill Length ANOVA ---\n")
+summary(bill_length_aov_adelie)
+bill_depth_aov_adelie <- aov(bill_depth_mm ~ island, data = adelie_penguins)
+cat("\n--- Adelie Penguins Bill Depth ANOVA ---\n")
+summary(bill_depth_aov_adelie)
+flipper_length_aov_adelie <- aov(flipper_length_mm ~ island, data = adelie_penguins)
+cat("\n--- Adelie Penguins Flipper Length ANOVA ---\n")
+summary(flipper_length_aov_adelie)
+body_mass_aov_adelie <- aov(body_mass_g ~ island, data = adelie_penguins)
+cat("\n--- Adelie Penguins Body Mass ANOVA ---\n")
+summary(body_mass_aov_adelie)
+```
+In the ANOVA results for Adelie penguins, the p-values for the four variables related to the penguins' body characteristics are all greater than 0.05, indicating that there are no significant differences in body characteristics among Adelie penguins from different islands. Therefore, it can be further inferred that the differences in body characteristics among penguins on the three islands do indeed exist, but these differences are more likely due to the inherent differences among the three species themselves, rather than being caused by environmental factors, such as the islands where they live.
