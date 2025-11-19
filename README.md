@@ -1,10 +1,10 @@
-## 🐧 Data Analysis of 200 Penguins from Antarctica
+# 🐧 Data Analysis of 200 Penguins from Antarctica
 A statistical exploration of Antarctic penguin morphology using R
 
 This repository contains an exploratory data analysis (EDA) project examining 200 penguins from three species (Adelie, Chinstrap, and Gentoo) across Biscoe, Dream, and Torgersen Islands in Antarctica.  
 The analysis was originally completed as part of a coursework assignment during my MSc Bioinformatics program. I decided to upload it here because the dataset is fascinating, and the project demonstrates practical applications of R in statistical modelling and biological data interpretation.
 
-# 🔍 Key findings
+## 🔍 Key findings
 
 * **Although Adelie penguins are found on all three islands, this pattern is unlikely to be explained by stronger swimming abilities.**  
   Their flipper length and flipper-to-body-mass ratios are not higher than those of Chinstrap or Gentoo penguins.
